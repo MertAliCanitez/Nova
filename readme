@@ -1,0 +1,128 @@
+Faz 0 – Hedefler & Kapsam
+Amaç: Ses → Niyet → Araç(lar) → Ses yanıt zinciri; masaüstü otomasyon, web otomasyonu, not/özet, IoT.
+Olmazsa olmazlar: Tamamen lokal (Ollama + faster-whisper + Piper/pyttsx3), modüler “tool” mimarisi, güvenlik onayı.
+Dış kapsam (isteğe bağlı): Haricî bulut API’leri.
+
+Faz 1 – Altyapı (repo & yapı)
+Görevler
+Repo/venv: poetry veya pip-tools; src/assistant/ paket yapısı.
+Konfig: .env + config.yaml (model adları, cihaz haritası, klasör yolları).
+Loglama: loguru veya structlog (dönüşler, hatalar, tool çağrıları).
+Hata yönetimi: global try/except + kullanıcıya sesli kısa bilgi.
+Çıktılar
+Dizin yapısı: src/assistant/
+  core/ (asr, tts, llm, router)
+  tools/ (desktop, web, notes, iot, finance)
+  data/ (notes.md, screenshots/)
+  config.yaml
+Kabul
+Uygulama konfigden açılıp kapanıyor; örnek log dosyası oluşuyor.
+
+Faz 2 – Ses Döngüsü (ASR + TTS + Wake)
+Görevler
+ASR: önce SpeechRecognition, sonra faster-whisper (CTranslate2) entegrasyonu.
+TTS: şimdilik pyttsx3 (offline), sonra Piper TTS (TR sesi).
+Wake kelimesi: “asistan” (ileride Porcupine).
+Kabul
+“asistan… merhaba de” → sesli yanıt geliyor.
+Gürültüde tolere edilebilir performans.
+
+Faz 3 – LLM & Niyet/Plan (Ollama)
+Görevler
+Ollama kur; model: llama3.1 (8B) veya qwen2.5.
+JSON zorlayıcı prompt: {"intent":"<tool>","args":{...}} + chitchat fallback.
+Router: gelen JSON’a göre TOOLS kayıt defterinden fonksiyon çağır.
+Kabul
+“ekran görüntüsü al” → take_screenshot çalışır; chitchat çalışır.
+
+
+Faz 4 – Masaüstü Araçları (Desktop tools)
+Görevler
+take_note(text): ~/assistant_notes.md’e ekle.
+summarize_notes(days?): notları LLM ile 5-10 maddede özetle.
+take_screenshot(region?): mss ile kaydet.
+open_app(name): macOS/Win/Linux uyumlu.
+Güvenlik: kritik işlerde onay (örn. dosya sil).
+Kabul
+“not al: toplantı 14:00”, “günlük notlarımı özetle”, “ekran görüntüsü al” hepsi çalışır.
+
+Faz 5 – Web Otomasyonu (Playwright)
+Görevler
+web_automation(steps[]): goto/type/click/press/wait/screenshot.
+Kalıcı oturum: launch_persistent_context("./user-data").
+Basit anti-kırılma: wait_for_selector, rastgele küçük beklemeler.
+Kabul
+“google’da ‘B2C fikri’ ara, ilk sonucu aç, ekran görüntüsü al” akışı tamam.
+
+Faz 6 – Bilgi & Özet (kişisel hafıza)
+Görevler
+Not formatı: Markdown + tarih damgası.
+“gün sonu özeti” komutu (son 24 saat notlarını özetle).
+Komut geçmişi (tool çağrıları) → isteğe bağlı analitik.
+Kabul
+“dünkü notlarımı 7 maddede özetle” çalışır.
+
+Faz 7 – Finans (opsiyonel, lokal öncelikli)
+Görevler
+“genel finans prensipleri” için LLM şablonu (yatırım tavsiyesi değildir uyarısı).
+(İsteğe bağlı) lokal/ücretsiz veri: yfinance ile kapanış verileri (internet gerektirir, ücret yok).
+Tool: finance_query(ticker, period) + finance_summary.
+Kabul
+“BTC son 30 gün özet” (“yatırım tavsiyesi değildir” ekli yanıt).
+
+Faz 8 – IoT Entegrasyonu (MQTT / Home Assistant)
+Görevler
+Mosquitto (lokal), paho-mqtt.
+Device registry (JSON/YAML): device_id, cmd_topic, state_topic, capabilities.
+Tools: iot_publish(device_id, command, payload), iot_query(device_id), iot_scene(name).
+Güvenlik: kullanıcı/şifre, topic ACL; kritiklerde onay.
+Kabul
+“salon ışığını %30 kıs” → publish; “salon kaç derece?” → state cevabı.
+
+Faz 9 – Güvenlik & İzinler
+Görevler
+Uygulama/komut allowlist (sadece izinli path/uygulamalar).
+“sudo/administrator” isteyen komutlarda açık uyarı + onay.
+Hassas veriler (token, .env) gitignored; şifreli saklama opsiyonu.
+Kabul
+İzin dışı komutlar engelleniyor; günlüklere atılıyor.
+
+Faz 10 – Test & Gözlemlenebilirlik
+Görevler
+Birim test: niyet ayrıştırma (örnek cümle → JSON).
+Entegrasyon test: tool zincirleri (not al→özetle).
+Sesli uçtan uca “scripted utterances” testi.
+Telemetri: her tool çağrısı, süre, hata kodu.
+Kabul
+CI’de temel testler yeşil; arıza durumunda anlamlı loglar.
+
+Faz 11 – Paketleme & Çalıştırma
+Görevler
+CLI: assistant start, assistant test, assistant tools --list.
+Sistem servisi: macOS launchd, Windows Task Scheduler/Service (opsiyonel).
+Paketleme: PyInstaller (tek exe/app), auto-update (manuel şimdilik).
+Kabul
+Tek komutla başlatılabiliyor; tray ikon (isteğe bağlı).
+
+Faz 12 – Esneme Hedefleri
+Wake word: Porcupine.
+Çoklu dil: en-US/tr-TR otomatik algı.
+Gelişmiş planlayıcı: LLM “multi-step plan → execute” (web+desktop+IoT karma).
+Mini GUI: not listesi, hızlı komutlar, log görünümü.
+
+{
+  "intent": "take_screenshot",
+  "args": { "region": null }
+}
+
+Geçerli intent’ler (ilk sürüm):
+take_note{text} · summarize_notes{days?} · take_screenshot{region?} · open_app{name}
+web_automation{steps[]} · play_media{query} · web_search{query}
+iot_publish{device_id,command,payload} · iot_query{device_id} · iot_scene{name}
+chitchat{text}
+
+Riskler & Çözümler
+ASR doğruluğu: faster-whisper + mikrofon kalibrasyonu + VAD.
+Playwright kırılganlık: API varsa API’yi tercih et; seçici beklemeler.
+LLM halüsinasyon: JSON şemasını sıkı tut; “bilinmiyor” demeyi öğret.
+Güvenlik: allowlist + kritik komut onayı + MQTT ACL/TLS.
