@@ -1,0 +1,18 @@
+# Uygulama ayarları
+app:
+  wake_words: ["nova", "selam", "asistan"]  # "wake word" tetikleyicileri
+  language: "tr-TR"                         # ASR dili (şimdilik Google SR kullanıyor)
+
+# LLM (Ollama) ayarları
+llm:
+  url: "http://localhost:11434/api/generate"  # Ollama REST endpoint
+  model: "llama3.1:8b"                        # Çekeceğin model etiketi
+
+# Dosya yolları
+paths:
+  notes_file: "~/assistant_notes.md"          # Notların kaydedileceği dosya (markdown)
+  screenshots_dir: "./data/screenshots"       # Ekran görüntülerinin düşeceği klasör
+
+# TTS ayarları (şimdilik pyttsx3)
+tts:
+  voice: "default"  # Platforma göre ses seçimi (ileride piper/coqui'ye geçilebilir)
